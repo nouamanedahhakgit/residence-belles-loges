@@ -10,6 +10,7 @@ import AppelDeFondModal from './components/AppelDeFondModal';
 import PaymentModal from './components/PaymentModal';
 import SupabaseSettingsModal from './components/SupabaseSettingsModal';
 import NewResidenceModal from './components/NewResidenceModal';
+import CoproprietairesCredentialsModal from './components/CoproprietairesCredentialsModal';
 import { 
   Building2, 
   ShieldCheck, 
@@ -171,6 +172,7 @@ function DashboardContent() {
       <PaymentModal />
       <SupabaseSettingsModal />
       <NewResidenceModal />
+      <CoproprietairesCredentialsModal />
     </div>
   );
 }

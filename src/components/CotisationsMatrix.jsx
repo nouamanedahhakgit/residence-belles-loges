@@ -160,6 +160,16 @@ export default function CotisationsMatrix() {
               <span>Magasins</span>
             </button>
           </div>
+
+          {/* Bouton Annuaire Mots de Passe & Identifiants */}
+          <button
+            onClick={() => setActiveModal('credentials')}
+            className="flex items-center space-x-1.5 px-3 py-1 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95"
+            title="Consulter tous les noms d'utilisateurs et mots de passe (Codes PIN) des copropriétaires"
+          >
+            <KeyRound className="w-3.5 h-3.5 text-amber-600" />
+            <span>Mots de Passe Copropriétaires</span>
+          </button>
         </div>
       </div>
 

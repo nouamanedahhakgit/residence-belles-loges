@@ -463,6 +463,35 @@ export function SyndicProvider({ children }) {
     }
   };
 
+  const updateCoproprietairePin = async (coproId, newPin) => {
+    const cleanPin = String(newPin).trim();
+    if (!cleanPin) return;
+
+    setAppState(prev => {
+      const updatedCopros = prev.coproprietaires.map(c => {
+        if (c.id === coproId || c.nom === coproId) {
+          return { ...c, pin: cleanPin };
+        }
+        return c;
+      });
+      return { ...prev, coproprietaires: updatedCopros };
+    });
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        await supabase
+          .from('coproprietaires')
+          .update({ 
+            code_pin: cleanPin, 
+            updated_at: new Date() 
+          })
+          .match({ id: coproId });
+      } catch (err) {
+        console.error('Erreur mise à jour code PIN Supabase:', err);
+      }
+    }
+  };
+
   const recordPayment = async ({ lotId, montant, modePaiement, reference, moisPayes, datePaiement, remarques }) => {
     const newPayment = {
       id: crypto.randomUUID(),
@@ -765,6 +794,7 @@ export function SyndicProvider({ children }) {
     setModalPayload,
     updateMonthlyPayment,
     updateCoproprietairePhone,
+    updateCoproprietairePin,
     recordPayment,
     logWhatsApp,
     exportToExcel,
