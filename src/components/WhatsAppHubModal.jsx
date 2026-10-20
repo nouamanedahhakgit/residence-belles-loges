@@ -9,11 +9,12 @@ import {
   Download, 
   ExternalLink, 
   Smartphone, 
-  AlertTriangle,
-  CheckCircle2,
-  Search,
-  Filter,
-  FileText
+  AlertTriangle, 
+  CheckCircle2, 
+  Search, 
+  Filter, 
+  FileText,
+  Save
 } from 'lucide-react';
 import { 
   formatWhatsAppPhones, 
@@ -33,7 +34,8 @@ export default function WhatsAppHubModal() {
     residence, 
     selectedYear,
     logWhatsApp,
-    whatsappLogs
+    whatsappLogs,
+    updateCoproprietairePhone
   } = useSyndic();
 
   if (activeModal !== 'whatsapp') return null;
@@ -79,6 +81,15 @@ export default function WhatsAppHubModal() {
   const [customMessage, setCustomMessage] = useState('');
   const [selectedPhone, setSelectedPhone] = useState('');
   const [copied, setCopied] = useState(false);
+  const [phoneSaved, setPhoneSaved] = useState(false);
+
+  const handleSavePhone = async () => {
+    if (!selectedPhone || !selectedCopro) return;
+    const targetCoproId = selectedCopro.lots[0]?.copro_id || selectedCopro.nom;
+    await updateCoproprietairePhone(targetCoproId, selectedPhone);
+    setPhoneSaved(true);
+    setTimeout(() => setPhoneSaved(false), 2500);
+  };
 
   // Mettre à jour le téléphone et message quand le copropriétaire ou template change
   React.useEffect(() => {
@@ -383,30 +394,44 @@ export default function WhatsAppHubModal() {
                       </div>
                     </div>
 
-                    {/* Sélection du numéro si multiple */}
+                    {/* Sélection et modification du numéro */}
                     <div className="flex-1">
-                      <label className="block text-xs font-medium text-slate-400 mb-1">
-                        Numéro WhatsApp
-                      </label>
-                      {availablePhones.length > 0 ? (
-                        <select
-                          value={selectedPhone}
-                          onChange={(e) => setSelectedPhone(e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-medium text-slate-400">
+                          Numéro WhatsApp
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleSavePhone}
+                          className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center space-x-1 transition-colors"
+                          title="Sauvegarder ce numéro dans Supabase"
                         >
-                          {availablePhones.map(p => (
-                            <option key={p} value={p}>+{p}</option>
-                          ))}
-                        </select>
-                      ) : (
+                          <Save className="w-3 h-3" />
+                          <span>{phoneSaved ? 'Enregistré dans Supabase !' : 'Enregistrer n°'}</span>
+                        </button>
+                      </div>
+
+                      <div className="flex space-x-1.5">
                         <input
                           type="text"
-                          placeholder="Ex: 212661000000"
+                          placeholder="Ex: 0669281802 ou 212669281802"
                           value={selectedPhone}
                           onChange={(e) => setSelectedPhone(e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                          className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
                         />
-                      )}
+                        {availablePhones.length > 1 && (
+                          <select
+                            value={selectedPhone}
+                            onChange={(e) => setSelectedPhone(e.target.value)}
+                            className="bg-slate-800 border border-slate-700 rounded-lg px-2 text-xs text-slate-300 font-mono"
+                            title="Choisir parmi les numéros disponibles"
+                          >
+                            {availablePhones.map(p => (
+                              <option key={p} value={p}>+{p}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

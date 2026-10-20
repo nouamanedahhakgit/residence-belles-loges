@@ -380,7 +380,37 @@ export function SyndicProvider({ children }) {
     }
   };
 
-  // 5. Enregistrement d'un log WhatsApp
+  // 5. Mise à jour du téléphone d'un copropriétaire (avec sauvegarde Supabase)
+  const updateCoproprietairePhone = async (coproId, newPhone) => {
+    const cleanPhone = String(newPhone).trim();
+
+    setAppState(prev => {
+      const updatedCopros = prev.coproprietaires.map(c => {
+        if (c.id === coproId || c.nom === coproId) {
+          return { ...c, tel: cleanPhone, whatsapp: Boolean(cleanPhone) };
+        }
+        return c;
+      });
+      return { ...prev, coproprietaires: updatedCopros };
+    });
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        await supabase
+          .from('coproprietaires')
+          .update({ 
+            telephone: cleanPhone, 
+            whatsapp_active: Boolean(cleanPhone), 
+            updated_at: new Date() 
+          })
+          .match({ id: coproId });
+      } catch (err) {
+        console.error('Erreur mise à jour téléphone Supabase:', err);
+      }
+    }
+  };
+
+  // 6. Enregistrement d'un log WhatsApp
   const logWhatsApp = (logItem) => {
     const log = {
       id: crypto.randomUUID(),
@@ -479,6 +509,7 @@ export function SyndicProvider({ children }) {
     modalPayload,
     setModalPayload,
     updateMonthlyPayment,
+    updateCoproprietairePhone,
     recordPayment,
     logWhatsApp,
     exportToExcel,
