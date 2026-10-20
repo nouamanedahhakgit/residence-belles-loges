@@ -10,7 +10,8 @@ import {
   CheckCircle, 
   AlertCircle,
   Building,
-  Store
+  Store,
+  Maximize2
 } from 'lucide-react';
 import { generateAppelDeFondPDF } from '../lib/pdfGenerator';
 
@@ -68,9 +69,9 @@ export default function CotisationsMatrix() {
   const totalDuSum = filteredLots.reduce((acc, l) => acc + l.totalDu, 0);
 
   return (
-    <div className="bg-slate-900/70 border border-slate-800 rounded-2xl shadow-xl overflow-hidden backdrop-blur-md">
+    <div className="w-full bg-slate-900/70 border border-slate-800 rounded-2xl shadow-xl overflow-hidden backdrop-blur-md">
       {/* Barre de contrôle & Filtres */}
-      <div className="p-4 sm:p-5 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-3.5 sm:p-4 border-b border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         {/* Recherche */}
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -140,36 +141,44 @@ export default function CotisationsMatrix() {
         </div>
       </div>
 
-      {/* Grille Matricielle 12 Mois */}
-      <div className="overflow-x-auto">
+      {/* Grille Matricielle Pleine Largeur (Full-Width Responsive Table) */}
+      <div className="w-full overflow-x-auto">
         <table className="w-full text-left border-collapse text-xs">
           <thead>
-            <tr className="bg-slate-800/80 border-b border-slate-700 text-[11px] font-semibold text-slate-300 uppercase tracking-wider">
-              <th className="py-3 px-3 sticky left-0 z-20 bg-slate-800/95 backdrop-blur-sm min-w-[90px]">
-                Lot / Étage
+            <tr className="bg-slate-800/90 border-b border-slate-700 text-[11px] font-semibold text-slate-300 uppercase tracking-wider">
+              {/* Lot */}
+              <th className="py-2.5 px-2.5 sticky left-0 z-20 bg-slate-800/95 backdrop-blur-sm min-w-[75px] w-[6%]">
+                Lot / Ét.
               </th>
-              <th className="py-3 px-3 sticky left-[90px] z-20 bg-slate-800/95 backdrop-blur-sm min-w-[200px]">
+              {/* Copropriétaire */}
+              <th className="py-2.5 px-3 sticky left-[75px] z-20 bg-slate-800/95 backdrop-blur-sm min-w-[170px] w-[18%]">
                 Copropriétaire
               </th>
-              {MOIS_NOMS.map((m, idx) => (
-                <th key={m} className="py-3 px-2 text-center min-w-[50px] font-mono">
+              {/* 12 Mois */}
+              {MOIS_NOMS.map((m) => (
+                <th key={m} className="py-2.5 px-1 text-center min-w-[42px] font-mono text-[10px] text-slate-400">
                   {m}
                 </th>
               ))}
-              <th className="py-3 px-3 text-right font-semibold text-emerald-400 min-w-[80px]">
+              {/* Payé */}
+              <th className="py-2.5 px-2 text-right font-semibold text-emerald-400 min-w-[65px] w-[6%] bg-emerald-950/10">
                 Payé
               </th>
-              <th className="py-3 px-3 text-right font-semibold text-amber-400 min-w-[80px]">
+              {/* Reste */}
+              <th className="py-2.5 px-2 text-right font-semibold text-amber-400 min-w-[65px] w-[6%] bg-amber-950/10">
                 Reste {selectedYear}
               </th>
-              <th className="py-3 px-3 text-right font-semibold text-red-400 min-w-[80px]">
+              {/* Arriérés */}
+              <th className="py-2.5 px-2 text-right font-semibold text-red-400 min-w-[65px] w-[6%] bg-red-950/10">
                 Arriérés
               </th>
-              <th className="py-3 px-3 text-right font-bold text-white min-w-[90px]">
+              {/* Total Dû */}
+              <th className="py-2.5 px-2.5 text-right font-bold text-white min-w-[75px] w-[7%] bg-slate-800/60">
                 Total Dû
               </th>
-              <th className="py-3 px-3 text-center min-w-[120px]">
-                Actions Rapides
+              {/* Actions Rapides */}
+              <th className="py-2.5 px-2 text-center min-w-[95px] w-[7%]">
+                Actions
               </th>
             </tr>
           </thead>
@@ -187,30 +196,30 @@ export default function CotisationsMatrix() {
                   }`}
                 >
                   {/* Code Lot & Étage */}
-                  <td className="py-2.5 px-3 sticky left-0 z-10 bg-slate-900/90 backdrop-blur-sm font-semibold text-slate-200">
+                  <td className="py-2 px-2.5 sticky left-0 z-10 bg-slate-900/90 backdrop-blur-sm font-semibold text-slate-200">
                     <div className="flex items-center space-x-1.5">
-                      <span className={`w-2 h-2 rounded-full ${
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${
                         lot.totalDu === 0 
                           ? 'bg-emerald-400' 
                           : lot.totalPaye > 0 
                             ? 'bg-amber-400' 
                             : 'bg-red-400'
                       }`} />
-                      <span className="font-mono text-white">{lot.code}</span>
-                      <span className="text-[10px] text-slate-400 px-1 py-0.5 rounded bg-slate-800">
+                      <span className="font-mono text-white text-xs">{lot.code}</span>
+                      <span className="text-[10px] text-slate-400 px-1 py-0.5 rounded bg-slate-800 font-mono">
                         {lot.etage}
                       </span>
                     </div>
                   </td>
 
                   {/* Nom du Copropriétaire & Tél */}
-                  <td className="py-2.5 px-3 sticky left-[90px] z-10 bg-slate-900/90 backdrop-blur-sm">
-                    <div className="font-medium text-slate-100 truncate max-w-[190px]" title={lot.coproprietaire.nom}>
+                  <td className="py-2 px-3 sticky left-[75px] z-10 bg-slate-900/90 backdrop-blur-sm">
+                    <div className="font-semibold text-slate-100 text-xs leading-tight" title={lot.coproprietaire.nom}>
                       {lot.coproprietaire.nom}
                     </div>
                     <div className="flex items-center space-x-2 text-[10px] text-slate-400 mt-0.5">
                       {lot.coproprietaire.tel ? (
-                        <span className="flex items-center space-x-0.5 text-slate-400 hover:text-emerald-400">
+                        <span className="flex items-center space-x-1 text-slate-400 hover:text-emerald-400 font-mono">
                           <Phone className="w-2.5 h-2.5" />
                           <span>{lot.coproprietaire.tel.split('/')[0]}</span>
                         </span>
@@ -236,7 +245,7 @@ export default function CotisationsMatrix() {
                       <td 
                         key={mIdx}
                         onClick={() => !isEditing && startEdit(lot.id, mIdx, amount)}
-                        className="py-1 px-1 text-center cursor-pointer select-none"
+                        className="py-1 px-0.5 text-center cursor-pointer select-none"
                         title="Cliquer pour modifier"
                       >
                         {isEditing ? (
@@ -247,7 +256,7 @@ export default function CotisationsMatrix() {
                             onChange={(e) => setTempValue(e.target.value)}
                             onBlur={() => saveEdit(lot.id, mIdx)}
                             onKeyDown={(e) => handleKeyDown(e, lot.id, mIdx)}
-                            className="w-12 h-7 bg-slate-800 border border-brand-500 text-center rounded text-white text-xs font-mono focus:outline-none"
+                            className="w-11 h-7 bg-slate-800 border border-brand-500 text-center rounded text-white text-xs font-mono focus:outline-none"
                           />
                         ) : (
                           <div className={`py-1 rounded border border-transparent transition-all hover:border-slate-600 font-mono text-[11px] ${cellStyle}`}>
@@ -259,22 +268,22 @@ export default function CotisationsMatrix() {
                   })}
 
                   {/* Total Payé */}
-                  <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-400">
+                  <td className="py-2 px-2 text-right font-mono font-semibold text-emerald-400 bg-emerald-950/5">
                     {lot.totalPaye.toLocaleString('fr-FR')}
                   </td>
 
                   {/* Reste Année */}
-                  <td className="py-2.5 px-3 text-right font-mono font-medium text-amber-400">
+                  <td className="py-2 px-2 text-right font-mono font-medium text-amber-400 bg-amber-950/5">
                     {Math.max(0, lot.resteAnnuel).toLocaleString('fr-FR')}
                   </td>
 
                   {/* Arriérés */}
-                  <td className="py-2.5 px-3 text-right font-mono font-medium text-red-400">
+                  <td className="py-2 px-2 text-right font-mono font-medium text-red-400 bg-red-950/5">
                     {lot.arrieres.toLocaleString('fr-FR')}
                   </td>
 
                   {/* Total Dû */}
-                  <td className="py-2.5 px-3 text-right font-mono font-bold text-white">
+                  <td className="py-2 px-2.5 text-right font-mono font-bold text-white bg-slate-800/40">
                     {lot.totalDu === 0 ? (
                       <span className="text-emerald-400 flex items-center justify-end space-x-1">
                         <CheckCircle className="w-3 h-3 inline" />
@@ -286,7 +295,7 @@ export default function CotisationsMatrix() {
                   </td>
 
                   {/* Actions Rapides */}
-                  <td className="py-2.5 px-2 text-center">
+                  <td className="py-2 px-1 text-center">
                     <div className="flex items-center justify-center space-x-1">
                       {/* Bouton PDF Appel de Fond */}
                       <button
@@ -332,23 +341,23 @@ export default function CotisationsMatrix() {
           {/* Ligne Totaux Globaux */}
           <tfoot>
             <tr className="bg-slate-800/90 font-mono font-bold text-slate-200 border-t-2 border-slate-700 text-[11px]">
-              <td className="py-3 px-3 sticky left-0 bg-slate-800 z-10">TOTAL ({filteredLots.length})</td>
-              <td className="py-3 px-3 sticky left-[90px] bg-slate-800 z-10 text-slate-400 font-normal">Cotisations / Mois</td>
+              <td className="py-2.5 px-2.5 sticky left-0 bg-slate-800 z-10">TOTAL ({filteredLots.length})</td>
+              <td className="py-2.5 px-3 sticky left-[75px] bg-slate-800 z-10 text-slate-400 font-normal">Cotisations / Mois</td>
               {monthlyTotals.map((tot, idx) => (
-                <td key={idx} className="py-3 px-1 text-center text-slate-300">
+                <td key={idx} className="py-2.5 px-0.5 text-center text-slate-300 text-[10px]">
                   {tot}
                 </td>
               ))}
-              <td className="py-3 px-3 text-right text-emerald-400 font-bold">
+              <td className="py-2.5 px-2 text-right text-emerald-400 font-bold bg-emerald-950/20">
                 {totalPayeSum.toLocaleString('fr-FR')}
               </td>
-              <td className="py-3 px-3 text-right text-amber-400 font-bold">
+              <td className="py-2.5 px-2 text-right text-amber-400 font-bold bg-amber-950/20">
                 {totalResteSum.toLocaleString('fr-FR')}
               </td>
-              <td className="py-3 px-3 text-right text-red-400 font-bold">
+              <td className="py-2.5 px-2 text-right text-red-400 font-bold bg-red-950/20">
                 {totalArrieresSum.toLocaleString('fr-FR')}
               </td>
-              <td className="py-3 px-3 text-right text-white font-extrabold text-xs">
+              <td className="py-2.5 px-2.5 text-right text-white font-extrabold text-xs bg-slate-800">
                 {totalDuSum.toLocaleString('fr-FR')}
               </td>
               <td></td>
