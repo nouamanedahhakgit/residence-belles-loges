@@ -434,38 +434,157 @@ export function SyndicProvider({ children }) {
     }
   };
 
-  // Exporter en Excel (.xlsx)
+  // Exporter en fichier Excel complet multi-feuilles (Identique au fichier officiel)
   const exportToExcel = () => {
-    const rows = enrichedLots.map(l => ({
-      'Code Lot': l.code,
-      'N° du Lot': l.nom,
-      'Étage': l.etage,
-      'Type': l.type === 'magasin' ? 'Magasin' : 'Appartement',
-      'Nom du Copropriétaire': l.coproprietaire.nom,
-      'Téléphone': l.coproprietaire.tel,
-      'WhatsApp': l.coproprietaire.whatsapp ? 'Oui' : 'Non',
-      'Jan': l.cotisation.months[0] || 0,
-      'Fév': l.cotisation.months[1] || 0,
-      'Mar': l.cotisation.months[2] || 0,
-      'Avr': l.cotisation.months[3] || 0,
-      'Mai': l.cotisation.months[4] || 0,
-      'Juin': l.cotisation.months[5] || 0,
-      'Juil': l.cotisation.months[6] || 0,
-      'Août': l.cotisation.months[7] || 0,
-      'Sept': l.cotisation.months[8] || 0,
-      'Oct': l.cotisation.months[9] || 0,
-      'Nov': l.cotisation.months[10] || 0,
-      'Déc': l.cotisation.months[11] || 0,
-      'Total Payé': l.totalPaye,
-      'Reste à Payer': l.resteAnnuel,
-      'Arriérés': l.arrieres,
-      'Solde Dû Total': l.totalDu
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, `Cotisations ${selectedYear}`);
-    XLSX.writeFile(wb, `Residence_Belles_Loges_Cotisations_${selectedYear}.xlsx`);
+
+    // 1. Feuille Cotisation 2026
+    const makeSheetData = (yr) => {
+      return appState.lots.map(l => {
+        const cp = coproMap[l.copro_id] || { nom: 'Inconnu', tel: '' };
+        const ct = appState.cotisations.find(c => c.lot_id === l.id && c.annee === yr) || {
+          months: [0,0,0,0,0,0,0,0,0,0,0,0],
+          montant_annuel: l.type === 'magasin' ? 1800 : 3600,
+          arrieres: 0
+        };
+        const tot = ct.months.reduce((a, b) => a + (Number(b) || 0), 0);
+        const reste = (ct.montant_annuel || 0) - tot;
+
+        return {
+          'Code Lot': l.code,
+          'N° du Lot': l.nom,
+          'Étage': l.etage,
+          'Type': l.type === 'magasin' ? 'Magasin' : 'Appartement',
+          'Nom du copropriétaire': cp.nom,
+          'N° de Tel': cp.tel,
+          'Date d\'aquisition': l.date_acq || '',
+          'Janvier': ct.months[0] || 0,
+          'Février': ct.months[1] || 0,
+          'Mars': ct.months[2] || 0,
+          'Avril': ct.months[3] || 0,
+          'Mai': ct.months[4] || 0,
+          'Juin': ct.months[5] || 0,
+          'Juillet': ct.months[6] || 0,
+          'Août': ct.months[7] || 0,
+          'Septembre': ct.months[8] || 0,
+          'Octobre': ct.months[9] || 0,
+          'Novembre': ct.months[10] || 0,
+          'Décembre': ct.months[11] || 0,
+          [`Total payé en ${yr}`]: tot,
+          [`Reste à payer en ${yr}`]: Math.max(0, reste),
+          'Arriérés antérieurs': ct.arrieres || 0,
+          'Solde Dû Total': Math.max(0, reste) + (ct.arrieres || 0)
+        };
+      });
+    };
+
+    // Ajouter les 3 feuilles d'années
+    const ws26 = XLSX.utils.json_to_sheet(makeSheetData(2026));
+    XLSX.utils.book_append_sheet(wb, ws26, 'Cotisation 2026');
+
+    const ws25 = XLSX.utils.json_to_sheet(makeSheetData(2025));
+    XLSX.utils.book_append_sheet(wb, ws25, 'Cotisation 2025');
+
+    const ws24 = XLSX.utils.json_to_sheet(makeSheetData(2024));
+    XLSX.utils.book_append_sheet(wb, ws24, 'Cotisation 2024');
+
+    // 4. Feuille Appel de Fond Modèle
+    const appelRows = [
+      ['SYNDICAT RESIDENCE BELLES LOGES'],
+      ['RUE ATTABARI, QUARTIER LES PRINCESSES, CASABLANCA'],
+      ['RIB: ' + appState.residence.rib + ' - ' + appState.residence.banque],
+      [],
+      ['APPEL DE FOND DES CHARGES COMMUNES DE COPROPRIÉTÉ'],
+      ['Date d\'édition : ' + new Date().toLocaleDateString('fr-FR')],
+      [],
+      ['DÉSIGNATION', 'N° DE LOT', 'MONTANT (DH)', 'OBSERVATION']
+    ];
+    appState.lots.slice(0, 5).forEach(l => {
+      appelRows.push(['Prévisions des charges communes', l.code, l.type === 'magasin' ? 1800 : 3600, 'Année 2026']);
+    });
+    const wsAppel = XLSX.utils.aoa_to_sheet(appelRows);
+    XLSX.utils.book_append_sheet(wb, wsAppel, 'Appel DE Fond');
+
+    // Télécharger le classeur complet
+    XLSX.writeFile(wb, `Residence_BELLES_LOGES_Cotisations_MultiFeuilles_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  // Importer depuis un fichier Excel (.xlsx) et mettre à jour l'écran ET Supabase en même temps
+  const importFromExcel = async (file) => {
+    try {
+      setIsSyncing(true);
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+
+      // Parcourir les feuilles d'années présentes
+      const years = [2026, 2025, 2024];
+      let updatedCount = 0;
+
+      for (let yr of years) {
+        const sheetName = `Cotisation ${yr}`;
+        const ws = workbook.Sheets[sheetName];
+        if (!ws) continue;
+
+        const jsonRows = XLSX.utils.sheet_to_json(ws);
+        for (let row of jsonRows) {
+          const lotCode = row['Code Lot'] || row['N° du lot'] || row['N° DE LOT'] || row['Lot'];
+          if (!lotCode) continue;
+
+          const matchLot = appState.lots.find(l => 
+            l.code.toLowerCase() === String(lotCode).trim().toLowerCase() ||
+            l.nom.toLowerCase() === String(lotCode).trim().toLowerCase()
+          );
+
+          if (matchLot) {
+            // Extraire les mois
+            const months = [
+              Number(row['Janvier'] || row['Jan'] || 0),
+              Number(row['Février'] || row['Fév'] || 0),
+              Number(row['Mars'] || row['Mar'] || 0),
+              Number(row['Avril'] || row['Avr'] || 0),
+              Number(row['Mai'] || 0),
+              Number(row['Juin'] || 0),
+              Number(row['Juillet'] || row['Juil'] || 0),
+              Number(row['Août'] || 0),
+              Number(row['Septembre'] || row['Sept'] || 0),
+              Number(row['Octobre'] || row['Oct'] || 0),
+              Number(row['Novembre'] || row['Nov'] || 0),
+              Number(row['Décembre'] || row['Déc'] || 0)
+            ];
+
+            // Mettre à jour en local
+            setAppState(prev => ({
+              ...prev,
+              cotisations: prev.cotisations.map(c => 
+                c.lot_id === matchLot.id && c.annee === yr ? { ...c, months } : c
+              )
+            }));
+
+            // Mettre à jour en même temps dans Supabase
+            if (isSupabaseConfigured() && supabase) {
+              const updates = { updated_at: new Date() };
+              months.forEach((m, idx) => {
+                const colKey = `m${String(idx + 1).padStart(2, '0')}`;
+                updates[colKey] = m;
+              });
+              await supabase
+                .from('cotisations_annuelles')
+                .update(updates)
+                .match({ lot_id: matchLot.id, annee: yr });
+            }
+            updatedCount++;
+          }
+        }
+      }
+
+      alert(`Importation réussie ! ${updatedCount} lots synchronisés sur l'écran et dans Supabase.`);
+      setLastSyncTime(new Date());
+    } catch (err) {
+      console.error('Erreur importation Excel:', err);
+      alert('Erreur lors de la lecture du fichier Excel : ' + err.message);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const resetToExcelDefaults = () => {
@@ -513,6 +632,7 @@ export function SyndicProvider({ children }) {
     recordPayment,
     logWhatsApp,
     exportToExcel,
+    importFromExcel,
     resetToExcelDefaults
   };
 

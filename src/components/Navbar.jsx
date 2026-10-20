@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useSyndic } from '../context/SyndicContext';
 import { 
   Building2, 
@@ -10,7 +10,9 @@ import {
   RotateCcw,
   Sparkles,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Upload,
+  Download
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -20,10 +22,21 @@ export default function Navbar() {
     setSelectedYear, 
     isSupabaseOnline,
     exportToExcel,
+    importFromExcel,
     resetToExcelDefaults,
     setActiveModal,
     setModalPayload
   } = useSyndic();
+
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      importFromExcel(file);
+      e.target.value = '';
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
@@ -114,13 +127,33 @@ export default function Navbar() {
               <span className="hidden md:inline">Encaisser</span>
             </button>
 
-            {/* Exporter Excel */}
+            {/* Hidden File Input for Excel Import */}
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              accept=".xlsx, .xls" 
+              onChange={handleFileChange} 
+              className="hidden" 
+            />
+
+            {/* Importer depuis Excel */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="hidden lg:flex items-center space-x-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700/80 text-xs font-medium transition-colors"
+              title="Importer un fichier Excel (.xlsx) et mettre à jour l'écran et Supabase"
+            >
+              <Upload className="w-3.5 h-3.5 text-blue-400" />
+              <span>Importer Excel</span>
+            </button>
+
+            {/* Exporter Excel Multi-Feuilles */}
             <button
               onClick={exportToExcel}
-              className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg border border-slate-700/60 transition-colors"
-              title="Exporter vers Excel (.xlsx)"
+              className="flex items-center space-x-1.5 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all"
+              title="Télécharger le fichier Excel complet à jour (.xlsx) identique au modèle officiel"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden xl:inline">Exporter Excel (.xlsx)</span>
             </button>
 
             {/* Réinitialiser aux valeurs d'origine */}
