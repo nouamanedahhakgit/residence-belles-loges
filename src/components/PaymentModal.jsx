@@ -103,96 +103,74 @@ export default function PaymentModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in font-sans">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900">
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center border border-blue-500/30">
+            <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400 flex items-center justify-center border border-brand-200 dark:border-brand-500/30">
               <CreditCard className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">
-                Encaisser une Cotisation
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                Encaisser un Règlement
               </h2>
-              <p className="text-xs text-slate-400">
-                Enregistre le paiement et génère automatiquement le reçu syndical.
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Enregistre le paiement sur l'écran, dans Supabase et génère le reçu PDF.
               </p>
             </div>
           </div>
           <button
             onClick={() => setActiveModal(null)}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Formulaire */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 text-xs">
           {/* Sélection du lot */}
           <div>
-            <label className="block text-slate-400 font-medium mb-1">
+            <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
               Lot & Copropriétaire concerné :
             </label>
             <select
               value={lotId}
               onChange={(e) => setLotId(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-brand-500"
             >
               {enrichedLots.map(l => (
                 <option key={l.id} value={l.id}>
-                  {l.code} - {l.nom} ({l.coproprietaire.nom}) • Reste: {l.totalDu} DH
+                  {l.code} - {l.nom} ({l.coproprietaire.nom}) • Dû : {l.totalDu} DH
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Raccourcis Trimestre */}
+          {/* Raccourci Trimestres */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-slate-400 font-medium">Mois concernés :</label>
-              <span className="text-[10px] text-slate-500">Remplissage automatique</span>
-            </div>
-            <div className="grid grid-cols-4 gap-1.5 mb-2">
-              {['T1 (Jan-Mar)', 'T2 (Avr-Jui)', 'T3 (Jui-Sep)', 'T4 (Oct-Déc)'].map((t, idx) => (
+            <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+              Raccourci Période ({selectedYear}) :
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {['T1 (Jan-Mar)', 'T2 (Avr-Juin)', 'T3 (Juil-Sep)', 'T4 (Oct-Déc)'].map((label, tIdx) => (
                 <button
                   type="button"
-                  key={t}
-                  onClick={() => handleSelectTrimestre(idx)}
-                  className="py-1 px-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-[11px] font-medium text-slate-300 transition-colors"
+                  key={tIdx}
+                  onClick={() => handleSelectTrimestre(tIdx)}
+                  className="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-[11px] font-semibold transition-colors border border-slate-200 dark:border-slate-700"
                 >
-                  {t}
+                  {label}
                 </button>
               ))}
-            </div>
-
-            {/* Checkboxes mois individuels */}
-            <div className="grid grid-cols-6 gap-1">
-              {MOIS_NOMS.map((m, idx) => {
-                const isSelected = selectedMonths.includes(idx);
-                return (
-                  <button
-                    type="button"
-                    key={m}
-                    onClick={() => toggleMonth(idx)}
-                    className={`py-1 text-[10px] font-mono rounded border transition-colors ${
-                      isSelected
-                        ? 'bg-blue-600/40 text-blue-200 border-blue-500'
-                        : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
-                    }`}
-                  >
-                    {m.substring(0, 3)}
-                  </button>
-                );
-              })}
             </div>
           </div>
 
           {/* Montant & Date */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-400 font-medium mb-1">
+              <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                 Montant encaissé (DH) * :
               </label>
               <input
@@ -200,80 +178,81 @@ export default function PaymentModal() {
                 required
                 value={montant}
                 onChange={(e) => setMontant(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono font-bold focus:outline-none focus:border-blue-500"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-brand-500"
               />
             </div>
             <div>
-              <label className="block text-slate-400 font-medium mb-1">
-                Date de paiement :
+              <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                Date de valeur :
               </label>
               <input
                 type="date"
                 value={datePaiement}
                 onChange={(e) => setDatePaiement(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-brand-500"
               />
             </div>
           </div>
 
-          {/* Mode de règlement & Référence */}
+          {/* Mode de paiement & Référence */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-400 font-medium mb-1">
+              <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
                 Mode de règlement :
               </label>
               <select
                 value={modePaiement}
                 onChange={(e) => setModePaiement(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-brand-500"
               >
                 <option value="virement">Virement bancaire</option>
-                <option value="cheque">Chèque bancaire</option>
-                <option value="especes">Espèces</option>
+                <option value="cheque">Chèque</option>
                 <option value="versement">Versement espèces</option>
+                <option value="especes">Espèces direct</option>
               </select>
             </div>
             <div>
-              <label className="block text-slate-400 font-medium mb-1">
-                Réf. / N° Chèque :
+              <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                N° Chèque / Réf Virement :
               </label>
               <input
                 type="text"
-                placeholder="Ex: VIR-849202 ou CHQ-0921"
+                placeholder="Ex: CHQ 894125 ou VIR BMCE"
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-brand-500 font-mono"
               />
             </div>
           </div>
 
-          {/* Option Reçu */}
+          {/* Reçu checkbox */}
           <div className="pt-2">
-            <label className="flex items-center space-x-2 cursor-pointer text-slate-300">
+            <label className="flex items-center space-x-2 cursor-pointer text-slate-700 dark:text-slate-300">
               <input
                 type="checkbox"
                 checked={generateReceipt}
                 onChange={(e) => setGenerateReceipt(e.target.checked)}
-                className="rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-0"
+                className="rounded border-slate-300 text-brand-600 focus:ring-0"
               />
-              <span className="font-medium">Télécharger immédiatement le Reçu de Paiement (PDF)</span>
+              <span className="font-semibold">Télécharger automatiquement le Reçu de Paiement officiel (PDF)</span>
             </label>
           </div>
 
-          {/* Actions */}
-          <div className="pt-4 flex items-center justify-end space-x-2 border-t border-slate-800">
+          {/* Boutons */}
+          <div className="pt-3 flex items-center justify-end space-x-2 border-t border-slate-200 dark:border-slate-800">
             <button
               type="button"
               onClick={() => setActiveModal(null)}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition-colors"
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-semibold transition-colors"
             >
               Annuler
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold shadow-lg shadow-blue-600/30 transition-all active:scale-95"
+              className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold shadow-md shadow-brand-600/20 transition-all flex items-center space-x-1.5 active:scale-95"
             >
-              Enregistrer le Paiement
+              <Check className="w-4 h-4" />
+              <span>Valider l'Encaissement</span>
             </button>
           </div>
         </form>

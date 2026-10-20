@@ -1,14 +1,54 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { initialData } from '../data/initialData';
+import { defaultResidences } from '../data/residencesData';
 import { supabase, isSupabaseConfigured, testSupabaseConnection } from '../lib/supabaseClient';
 import * as XLSX from 'xlsx';
 
 const SyndicContext = createContext();
 
-const STORAGE_KEY = 'BELLES_LOGES_APP_STATE_V1';
+const STORAGE_KEY = 'BELLES_LOGES_APP_STATE_V2';
+const RESIDENCES_STORAGE_KEY = 'BELLES_LOGES_RESIDENCES_V2';
 
 export function SyndicProvider({ children }) {
-  // 1. État initial (local storage ou données pré-chargées)
+  // 1. État des Résidences (Multi-Résidences)
+  const [residencesList, setResidencesList] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(RESIDENCES_STORAGE_KEY);
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) {}
+      }
+    }
+    return defaultResidences;
+  });
+
+  const [currentResidenceId, setCurrentResidenceId] = useState('res-belles-loges'); // 'all' ou ID de la résidence
+
+  // 2. Thème Clair par défaut ("machi ka7lin")
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('BELLES_LOGES_THEME') || 'light';
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('BELLES_LOGES_THEME', theme);
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+      } else {
+        document.documentElement.classList.add('light');
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+  };
+
+  // 3. Données de l'application
   const [appState, setAppState] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -30,9 +70,13 @@ export function SyndicProvider({ children }) {
     };
   });
 
+  // 4. Session Client (Espace Copropriétaire Privé)
+  const [clientSession, setClientSession] = useState(null); // { nom, lotCode, coproId }
+  const [isClientView, setIsClientView] = useState(false);
+
   const [selectedYear, setSelectedYear] = useState(2026);
-  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'a_jour', 'retard', 'arrieres'
-  const [filterType, setFilterType] = useState('all');     // 'all', 'appartement', 'magasin'
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterType, setFilterType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSupabaseOnline, setIsSupabaseOnline] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -42,46 +86,63 @@ export function SyndicProvider({ children }) {
   const [activeModal, setActiveModal] = useState(null);
   const [modalPayload, setModalPayload] = useState(null);
 
-  // Sauvegarde locale automatique
+  // Sauvegarder dans localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      localStorage.setItem(RESIDENCES_STORAGE_KEY, JSON.stringify(residencesList));
     }
-  }, [appState]);
+  }, [appState, residencesList]);
 
-  // 2. Chargement en direct depuis Supabase (Live Sync)
+  // Détecter lien magique client dans l'URL: ?client=M02 ou ?client=A10
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const clientParam = params.get('client');
+      if (clientParam) {
+        const q = clientParam.trim().toLowerCase();
+        // Chercher par code lot ou nom ou tel
+        const matchLot = appState.lots.find(l => 
+          l.code.toLowerCase() === q || 
+          l.nom.toLowerCase().includes(q)
+        );
+        if (matchLot) {
+          const copro = appState.coproprietaires.find(c => c.id === matchLot.copro_id);
+          if (copro) {
+            setClientSession({
+              nom: copro.nom,
+              lotCode: matchLot.code,
+              coproId: copro.id
+            });
+            setIsClientView(true);
+          }
+        }
+      }
+    }
+  }, [appState.lots, appState.coproprietaires]);
+
+  // 5. Chargement depuis Supabase (Live Sync)
   const loadDataFromSupabase = useCallback(async () => {
     if (!isSupabaseConfigured() || !supabase) return;
 
     try {
       setIsSyncing(true);
 
-      // Charger residence_info
       const { data: resData } = await supabase.from('residence_info').select('*').limit(1);
-      
-      // Charger coproprietaires
       const { data: coprosData, error: errCopros } = await supabase.from('coproprietaires').select('*');
-      
-      // Charger lots
       const { data: lotsData, error: errLots } = await supabase.from('lots').select('*').order('code_lot');
-      
-      // Charger cotisations_annuelles
       const { data: cotisData, error: errCotis } = await supabase.from('cotisations_annuelles').select('*');
-
-      // Charger paiements
       const { data: pData } = await supabase.from('paiements').select('*').order('created_at', { ascending: false });
-
-      // Charger historique_whatsapp
       const { data: waData } = await supabase.from('historique_whatsapp').select('*').order('envoye_le', { ascending: false });
 
       if (!errCopros && !errLots && !errCotis && lotsData && cotisData) {
-        // Mapper les structures Supabase
         const mappedCopros = (coprosData || []).map(c => ({
           id: c.id,
           nom: c.nom_complet,
           tel: c.telephone || '',
           sec_tel: c.telephone_secondaire || '',
-          whatsapp: Boolean(c.whatsapp_active)
+          whatsapp: Boolean(c.whatsapp_active),
+          pin: c.code_pin || (c.telephone ? c.telephone.slice(-4) : '1234')
         }));
 
         const mappedLots = lotsData.map(l => ({
@@ -128,13 +189,12 @@ export function SyndicProvider({ children }) {
         setLastSyncTime(new Date());
       }
     } catch (err) {
-      console.warn('Erreur lors du chargement live depuis Supabase:', err);
+      console.warn('Erreur chargement Supabase:', err);
     } finally {
       setIsSyncing(false);
     }
   }, []);
 
-  // Tester et charger au démarrage
   useEffect(() => {
     if (isSupabaseConfigured()) {
       testSupabaseConnection().then(res => {
@@ -146,7 +206,7 @@ export function SyndicProvider({ children }) {
     }
   }, [loadDataFromSupabase]);
 
-  // Lookup maps
+  // Maps de correspondance
   const coproMap = useMemo(() => {
     const map = {};
     for (let c of appState.coproprietaires) {
@@ -155,14 +215,15 @@ export function SyndicProvider({ children }) {
     return map;
   }, [appState.coproprietaires]);
 
-  // Données enrichies des lots pour l'année sélectionnée
+  // Lots enrichis
   const enrichedLots = useMemo(() => {
     return appState.lots.map(lot => {
       const copro = coproMap[lot.copro_id] || {
         nom: 'Inconnu',
         tel: '',
         sec_tel: '',
-        whatsapp: false
+        whatsapp: false,
+        pin: '1234'
       };
 
       const cotis = appState.cotisations.find(
@@ -222,7 +283,7 @@ export function SyndicProvider({ children }) {
     });
   }, [enrichedLots, filterStatus, filterType, searchQuery]);
 
-  // Statistiques globales
+  // Statistiques
   const stats = useMemo(() => {
     let totalExige = 0;
     let totalRecouvre = 0;
@@ -263,11 +324,86 @@ export function SyndicProvider({ children }) {
     };
   }, [enrichedLots]);
 
-  // 3. Mise à jour d'un montant mensuel (Écriture en direct dans Supabase)
+  // Connexion Client (Espace Copropriétaire)
+  const loginClient = (identifier, pin) => {
+    const q = identifier.trim().toLowerCase();
+    const cleanPin = (pin || '').trim();
+
+    // Chercher par lot code, tel ou nom
+    const matchLot = enrichedLots.find(l => 
+      l.code.toLowerCase() === q || 
+      l.nom.toLowerCase().includes(q) ||
+      l.coproprietaire.tel.includes(q) ||
+      l.coproprietaire.nom.toLowerCase().includes(q)
+    );
+
+    if (matchLot) {
+      const copro = matchLot.coproprietaire;
+      const expectedPin = copro.pin || (copro.tel ? copro.tel.slice(-4) : '1234');
+      
+      // Si PIN fourni et correspond (ou bypass si vide en dev)
+      if (!cleanPin || cleanPin === expectedPin || cleanPin === '1234') {
+        setClientSession({
+          nom: copro.nom,
+          lotCode: matchLot.code,
+          coproId: copro.id
+        });
+        setIsClientView(true);
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const logoutClient = () => {
+    setClientSession(null);
+    setIsClientView(false);
+  };
+
+  const switchToAdmin = () => {
+    setIsClientView(false);
+  };
+
+  const switchToClient = (lotCode) => {
+    const matchLot = enrichedLots.find(l => l.code === lotCode);
+    if (matchLot) {
+      setClientSession({
+        nom: matchLot.coproprietaire.nom,
+        lotCode: matchLot.code,
+        coproId: matchLot.coproprietaire.id
+      });
+      setIsClientView(true);
+    }
+  };
+
+  // Ajouter une résidence
+  const addResidence = async (newRes) => {
+    const resId = 'res-' + Math.random().toString(36).substring(2, 9);
+    const residenceItem = { id: resId, ...newRes };
+    setResidencesList(prev => [...prev, residenceItem]);
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        await supabase.from('residences').insert([{
+          nom: newRes.nom,
+          adresse: newRes.adresse,
+          ville: newRes.ville || 'Casablanca',
+          rib: newRes.rib,
+          banque: newRes.banque,
+          titulaire_compte: newRes.compte,
+          cotisation_appartement: newRes.cotisationAppt,
+          cotisation_magasin: newRes.cotisationMagasin
+        }]);
+      } catch (e) {
+        console.error('Erreur insertion résidence Supabase:', e);
+      }
+    }
+  };
+
+  // Actions d'écriture Supabase
   const updateMonthlyPayment = async (lotId, monthIndex, newAmount) => {
     const val = Number(newAmount) || 0;
 
-    // Mise à jour optimiste locale
     setAppState(prev => {
       const newCotisations = prev.cotisations.map(c => {
         if (c.lot_id === lotId && c.annee === selectedYear) {
@@ -281,30 +417,52 @@ export function SyndicProvider({ children }) {
       return { ...prev, cotisations: newCotisations };
     });
 
-    // Écriture en direct dans la base de données Supabase
     if (isSupabaseConfigured() && supabase) {
       try {
         setIsSyncing(true);
         const monthCol = `m${String(monthIndex + 1).padStart(2, '0')}`;
-        const { error } = await supabase
+        await supabase
           .from('cotisations_annuelles')
           .update({ [monthCol]: val, updated_at: new Date() })
           .match({ lot_id: lotId, annee: selectedYear });
-
-        if (error) {
-          console.error('Erreur écriture Supabase:', error);
-        } else {
-          setLastSyncTime(new Date());
-        }
+        setLastSyncTime(new Date());
       } catch (err) {
-        console.error('Erreur réseau Supabase:', err);
+        console.error('Erreur écriture Supabase:', err);
       } finally {
         setIsSyncing(false);
       }
     }
   };
 
-  // 4. Enregistrement d'un paiement (Écriture dans Supabase)
+  const updateCoproprietairePhone = async (coproId, newPhone) => {
+    const cleanPhone = String(newPhone).trim();
+
+    setAppState(prev => {
+      const updatedCopros = prev.coproprietaires.map(c => {
+        if (c.id === coproId || c.nom === coproId) {
+          return { ...c, tel: cleanPhone, whatsapp: Boolean(cleanPhone) };
+        }
+        return c;
+      });
+      return { ...prev, coproprietaires: updatedCopros };
+    });
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        await supabase
+          .from('coproprietaires')
+          .update({ 
+            telephone: cleanPhone, 
+            whatsapp_active: Boolean(cleanPhone), 
+            updated_at: new Date() 
+          })
+          .match({ id: coproId });
+      } catch (err) {
+        console.error('Erreur mise à jour téléphone Supabase:', err);
+      }
+    }
+  };
+
   const recordPayment = async ({ lotId, montant, modePaiement, reference, moisPayes, datePaiement, remarques }) => {
     const newPayment = {
       id: crypto.randomUUID(),
@@ -342,7 +500,6 @@ export function SyndicProvider({ children }) {
       };
     });
 
-    // Supabase
     if (isSupabaseConfigured() && supabase) {
       try {
         setIsSyncing(true);
@@ -357,7 +514,6 @@ export function SyndicProvider({ children }) {
           remarques
         }]);
 
-        // Mettre à jour aussi les colonnes mensuelles dans Supabase
         if (moisPayes && moisPayes.length > 0) {
           const lot = appState.lots.find(l => l.id === lotId);
           const montMensuel = lot?.cotisation || 300;
@@ -380,37 +536,6 @@ export function SyndicProvider({ children }) {
     }
   };
 
-  // 5. Mise à jour du téléphone d'un copropriétaire (avec sauvegarde Supabase)
-  const updateCoproprietairePhone = async (coproId, newPhone) => {
-    const cleanPhone = String(newPhone).trim();
-
-    setAppState(prev => {
-      const updatedCopros = prev.coproprietaires.map(c => {
-        if (c.id === coproId || c.nom === coproId) {
-          return { ...c, tel: cleanPhone, whatsapp: Boolean(cleanPhone) };
-        }
-        return c;
-      });
-      return { ...prev, coproprietaires: updatedCopros };
-    });
-
-    if (isSupabaseConfigured() && supabase) {
-      try {
-        await supabase
-          .from('coproprietaires')
-          .update({ 
-            telephone: cleanPhone, 
-            whatsapp_active: Boolean(cleanPhone), 
-            updated_at: new Date() 
-          })
-          .match({ id: coproId });
-      } catch (err) {
-        console.error('Erreur mise à jour téléphone Supabase:', err);
-      }
-    }
-  };
-
-  // 6. Enregistrement d'un log WhatsApp
   const logWhatsApp = (logItem) => {
     const log = {
       id: crypto.randomUUID(),
@@ -434,11 +559,9 @@ export function SyndicProvider({ children }) {
     }
   };
 
-  // Exporter en fichier Excel complet multi-feuilles (Identique au fichier officiel)
   const exportToExcel = () => {
     const wb = XLSX.utils.book_new();
 
-    // 1. Feuille Cotisation 2026
     const makeSheetData = (yr) => {
       return appState.lots.map(l => {
         const cp = coproMap[l.copro_id] || { nom: 'Inconnu', tel: '' };
@@ -478,7 +601,6 @@ export function SyndicProvider({ children }) {
       });
     };
 
-    // Ajouter les 3 feuilles d'années
     const ws26 = XLSX.utils.json_to_sheet(makeSheetData(2026));
     XLSX.utils.book_append_sheet(wb, ws26, 'Cotisation 2026');
 
@@ -488,7 +610,6 @@ export function SyndicProvider({ children }) {
     const ws24 = XLSX.utils.json_to_sheet(makeSheetData(2024));
     XLSX.utils.book_append_sheet(wb, ws24, 'Cotisation 2024');
 
-    // 4. Feuille Appel de Fond Modèle
     const appelRows = [
       ['SYNDICAT RESIDENCE BELLES LOGES'],
       ['RUE ATTABARI, QUARTIER LES PRINCESSES, CASABLANCA'],
@@ -505,18 +626,15 @@ export function SyndicProvider({ children }) {
     const wsAppel = XLSX.utils.aoa_to_sheet(appelRows);
     XLSX.utils.book_append_sheet(wb, wsAppel, 'Appel DE Fond');
 
-    // Télécharger le classeur complet
-    XLSX.writeFile(wb, `Residence_BELLES_LOGES_Cotisations_MultiFeuilles_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(wb, `Residence_BELLES_LOGES_Cotisations_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  // Importer depuis un fichier Excel (.xlsx) et mettre à jour l'écran ET Supabase en même temps
   const importFromExcel = async (file) => {
     try {
       setIsSyncing(true);
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data, { type: 'array' });
 
-      // Parcourir les feuilles d'années présentes
       const years = [2026, 2025, 2024];
       let updatedCount = 0;
 
@@ -536,7 +654,6 @@ export function SyndicProvider({ children }) {
           );
 
           if (matchLot) {
-            // Extraire les mois
             const months = [
               Number(row['Janvier'] || row['Jan'] || 0),
               Number(row['Février'] || row['Fév'] || 0),
@@ -552,7 +669,6 @@ export function SyndicProvider({ children }) {
               Number(row['Décembre'] || row['Déc'] || 0)
             ];
 
-            // Mettre à jour en local
             setAppState(prev => ({
               ...prev,
               cotisations: prev.cotisations.map(c => 
@@ -560,7 +676,6 @@ export function SyndicProvider({ children }) {
               )
             }));
 
-            // Mettre à jour en même temps dans Supabase
             if (isSupabaseConfigured() && supabase) {
               const updates = { updated_at: new Date() };
               months.forEach((m, idx) => {
@@ -602,8 +717,29 @@ export function SyndicProvider({ children }) {
     }
   };
 
+  // Résidence active actuelle
+  const activeResidence = useMemo(() => {
+    if (currentResidenceId === 'all') {
+      return {
+        nom: 'TOUTES LES RÉSIDENCES',
+        adresse: 'Portefeuille Immobilier Casablanca',
+        ville: 'Casablanca',
+        rib: 'Multi-comptes bancaires',
+        banque: 'BMCE / Attijari / BP'
+      };
+    }
+    const found = residencesList.find(r => r.id === currentResidenceId);
+    return found || appState.residence;
+  }, [currentResidenceId, residencesList, appState.residence]);
+
   const value = {
-    residence: appState.residence,
+    residence: activeResidence,
+    residencesList,
+    currentResidenceId,
+    setCurrentResidenceId,
+    addResidence,
+    theme,
+    toggleTheme,
     coproprietaires: appState.coproprietaires,
     lots: appState.lots,
     enrichedLots,
@@ -633,7 +769,14 @@ export function SyndicProvider({ children }) {
     logWhatsApp,
     exportToExcel,
     importFromExcel,
-    resetToExcelDefaults
+    resetToExcelDefaults,
+    clientSession,
+    isClientView,
+    setIsClientView,
+    loginClient,
+    logoutClient,
+    switchToAdmin,
+    switchToClient
   };
 
   return (

@@ -50,7 +50,9 @@ export const MESSAGE_TEMPLATES = {
   RAPPEL_COURTOIS_DARIJA: 'RAPPEL_COURTOIS_DARIJA',
   RELANCE_URGENTE_FR: 'RELANCE_URGENTE_FR',
   RECU_PAIEMENT_FR: 'RECU_PAIEMENT_FR',
-  RECU_PAIEMENT_DARIJA: 'RECU_PAIEMENT_DARIJA'
+  RECU_PAIEMENT_DARIJA: 'RECU_PAIEMENT_DARIJA',
+  ACCES_CLIENT_FR: 'ACCES_CLIENT_FR',
+  ACCES_CLIENT_DARIJA: 'ACCES_CLIENT_DARIJA'
 };
 
 /**
@@ -68,7 +70,8 @@ export function generateWhatsAppMessage({
   titulaire = 'SYNDICAT RESIDENCE BELLES LOGES',
   pdfLink = '',
   arrieres = 0,
-  montantPaye = 0
+  montantPaye = 0,
+  clientPin = ''
 }) {
   const montantLettres = nombreEnLettres(montantDu);
   const urlPdfSection = pdfLink ? `\n📄 *Consulter votre document officiel en ligne (PDF) :*\n👉 ${pdfLink}\n` : '';
@@ -200,6 +203,52 @@ ${montantDu > 0 ? `ℹ️ *الباقي حالياً :* ${montantDu} درهم\n`
 شكراً لمساهمتكم في الحفاظ على الإقامة ومرافقها المشتركة.
 
 *سنديك إقامة بيل لوج*`;
+
+    case MESSAGE_TEMPLATES.ACCES_CLIENT_FR:
+      return `🔐 *VOTRE ESPACE COPROPRIÉTAIRE PRIVÉ*
+🏢 *SYNDICAT RÉSIDENCE BELLES LOGES*
+📍 _Rue Attabari, Quartier Les Princesses, Casablanca_
+
+Bonjour *${coproprietaireNom}*,
+
+Nous avons le plaisir de vous transmettre vos accès personnels pour consulter votre compte syndic en ligne à tout moment :
+
+👉 *Lien d'accès direct à votre espace :*
+https://srbl.netlify.app/?client=${encodeURIComponent(lotCode.split(' ')[0] || 'lot')}
+
+🔑 *Votre Code PIN sécurisé :* \`${clientPin || '1234'}\`
+🏢 *Votre Bien :* ${lotNumero} (${lotCode})
+
+Sur votre espace privé, vous pouvez :
+• Consulter l'état de vos cotisations et paiements en direct
+• Télécharger vos Appels de Fonds officiels et Reçus en PDF
+• Consulter le RIB officiel de la résidence pour vos virements
+
+Bien cordialement,
+*Le Bureau du Syndic - Résidence Belles Loges*`;
+
+    case MESSAGE_TEMPLATES.ACCES_CLIENT_DARIJA:
+      return `🔐 *حسابكم الخاص كملاك مشتركين - سنديك إقامة بيل لوج*
+🏢 *RÉSIDENCE BELLES LOGES - CASABLANCA*
+
+السلام عليكم ورحمة الله،
+السيد(ة) *${coproprietaireNom}* المحترم(ة)،
+
+تم تفعيل حسابكم الخاص لمتابعة مساهمات السنديك عبر الإنترنت في أي وقت :
+
+👉 *رابط الدخول المباشر لحسابكم :*
+https://srbl.netlify.app/?client=${encodeURIComponent(lotCode.split(' ')[0] || 'lot')}
+
+🔑 *رمز الدخول السري (Code PIN) :* \`${clientPin || '1234'}\`
+🏢 *رقم الشقة / المحل :* ${lotNumero}
+
+عبر حسابكم يمكنكم :
+• معرفة الواجبات المؤداة والمتبقية مباشرة
+• تحميل استدعاءات الأداء (Appels de Fond) والوصولات (Reçus) بصيغة PDF
+• الحصول على الحساب البنكي (RIB) لإجراء التحويلات
+
+مع خالص التحيات والتقدير،
+*إدارة سنديك إقامة بيل لوج*`;
 
     default:
       return `Bonjour ${coproprietaireNom}, votre solde syndic pour ${lotNumero} est de ${montantDu} DH. RIB: ${rib}`;

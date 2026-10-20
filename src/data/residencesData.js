@@ -1,0 +1,50 @@
+export const defaultResidences = [
+  {
+    id: 'res-belles-loges',
+    nom: 'SYNDICAT RESIDENCE BELLES LOGES',
+    nomCourt: 'Belles Loges',
+    adresse: 'Rue Attabari, Quartier Les Princesses, Casablanca',
+    ville: 'Casablanca',
+    rib: '011 780 0000402100011545 25',
+    banque: 'BMCE Bank of Africa',
+    compte: 'SYNDICAT RESIDENCE BELLES LOGES',
+    totalLots: 33,
+    apptsCount: 29,
+    magasinsCount: 4,
+    cotisationAppt: 300,
+    cotisationMagasin: 150,
+    badgeColor: 'emerald'
+  },
+  {
+    id: 'res-les-palmiers',
+    nom: 'SYNDICAT COPROPRIETE LES PALMIERS',
+    nomCourt: 'Les Palmiers',
+    adresse: 'Boulevard Abdelmoumen, Quartier Palmier, Casablanca',
+    ville: 'Casablanca',
+    rib: '022 780 0000982300022410 44',
+    banque: 'Attijariwafa Bank',
+    compte: 'SYNDICAT LES PALMIERS',
+    totalLots: 24,
+    apptsCount: 20,
+    magasinsCount: 4,
+    cotisationAppt: 350,
+    cotisationMagasin: 200,
+    badgeColor: 'blue'
+  },
+  {
+    id: 'res-anfa-sky',
+    nom: 'SYNDICAT RESIDENCE ANFA SKY',
+    nomCourt: 'Anfa Sky',
+    adresse: 'Angle Boulevard d\'Anfa et Zerktouni, Casablanca',
+    ville: 'Casablanca',
+    rib: '007 780 0000551100077890 12',
+    banque: 'Banque Populaire',
+    compte: 'SYNDICAT ANFA SKY',
+    totalLots: 40,
+    apptsCount: 36,
+    magasinsCount: 4,
+    cotisationAppt: 400,
+    cotisationMagasin: 250,
+    badgeColor: 'purple'
+  }
+];
