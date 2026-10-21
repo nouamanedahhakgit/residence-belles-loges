@@ -601,6 +601,21 @@ export function SyndicProvider({ children }) {
         };
         const tot = ct.months.reduce((a, b) => a + (Number(b) || 0), 0);
         const reste = (ct.montant_annuel || 0) - tot;
+        const soldeDu = Math.max(0, reste) + (ct.arrieres || 0);
+        const staticPdfUrl = `https://srbl.netlify.app/pdf/appel-${l.code}.pdf`;
+        const magicPortalUrl = `https://srbl.netlify.app/?client=${l.code}`;
+        
+        // Formater le numéro de téléphone pour wa.me
+        let cleanPhone = (cp.tel || '').replace(/[^\d]/g, '');
+        if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
+          cleanPhone = '212' + cleanPhone.substring(1);
+        } else if (cleanPhone.startsWith('00')) {
+          cleanPhone = cleanPhone.substring(2);
+        }
+
+        const msgText = `🏢 *SYNDICAT RÉSIDENCE BELLES LOGES*\n📍 Rue Attabari, Quartier Les Princesses, Casablanca\n\nBonjour *${cp.nom}*,\n\nVeuillez trouver ci-dessous l'appel de cotisations syndicales pour votre bien (*${l.nom}* / ${l.code}) :\n\n📅 *Période :* Année ${yr}\n💰 *Total à régler :* *${soldeDu} DH*${ct.arrieres > 0 ? ` (dont arriérés : ${ct.arrieres} DH)` : ''}\n\n📄 *Télécharger votre document officiel (PDF) :*\n👉 ${staticPdfUrl}\n\n🏦 *Coordonnées bancaires pour le virement :*\n• *Bénéficiaire :* SYNDICAT RESIDENCE BELLES LOGES\n• *Banque :* BMCE / BANK OF AFRICA\n• *RIB :* \`011 780 0000402100011545 25\`\n\n_Motif : ${l.code} - ${cp.nom}_\n\nMerci pour votre précieuse collaboration.\n*Le Bureau du Syndic*`;
+
+        const waLink = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msgText)}` : '';
 
         return {
           'Code Lot': l.code,
@@ -625,7 +640,11 @@ export function SyndicProvider({ children }) {
           [`Total payé en ${yr}`]: tot,
           [`Reste à payer en ${yr}`]: Math.max(0, reste),
           'Arriérés antérieurs': ct.arrieres || 0,
-          'Solde Dû Total': Math.max(0, reste) + (ct.arrieres || 0)
+          'Solde Dû Total': soldeDu,
+          'Lien PDF Officiel (Statique)': staticPdfUrl,
+          'Lien WhatsApp Direct (wa.me)': waLink ? `=HYPERLINK("${waLink}", "📲 Envoyer WhatsApp Direct")` : 'Pas de tél',
+          'Message WhatsApp Prêt': msgText,
+          'Lien Espace Client Direct': magicPortalUrl
         };
       });
     };

@@ -74,7 +74,13 @@ export function generateWhatsAppMessage({
   clientPin = ''
 }) {
   const montantLettres = nombreEnLettres(montantDu);
-  const urlPdfSection = pdfLink ? `\n📄 *Consulter votre document officiel en ligne (PDF) :*\n👉 ${pdfLink}\n` : '';
+  const cleanLot = (lotCode || '').split(/[\s+,/]/)[0].trim();
+  const defaultPdfUrl = `https://srbl.netlify.app/pdf/appel-${cleanLot}.pdf`;
+  const finalPdfLink = pdfLink || defaultPdfUrl;
+  const isDarijaTemplate = template.includes('DARIJA');
+  const urlPdfSection = isDarijaTemplate 
+    ? `\n📄 *رابط استدعاء الأداء الرسمي (PDF) :*\n👉 ${finalPdfLink}\n`
+    : `\n📄 *Consulter votre Appel de Fond officiel (PDF) :*\n👉 ${finalPdfLink}\n`;
 
   switch (template) {
     case MESSAGE_TEMPLATES.APPEL_FOND_FR:
@@ -214,10 +220,13 @@ Bonjour *${coproprietaireNom}*,
 Nous avons le plaisir de vous transmettre vos accès personnels pour consulter votre compte syndic en ligne à tout moment :
 
 👉 *Lien d'accès direct à votre espace :*
-https://srbl.netlify.app/?client=${encodeURIComponent(lotCode.split(' ')[0] || 'lot')}
+https://srbl.netlify.app/?client=${encodeURIComponent((lotCode || '').split(' ')[0] || 'lot')}
 
 🔑 *Votre Code PIN sécurisé :* \`${clientPin || '1234'}\`
 🏢 *Votre Bien :* ${lotNumero} (${lotCode})
+
+📄 *Votre Appel de Fond officiel (PDF direct) :*
+👉 ${finalPdfLink}
 
 Sur votre espace privé, vous pouvez :
 • Consulter l'état de vos cotisations et paiements en direct
@@ -237,14 +246,17 @@ Bien cordialement,
 تم تفعيل حسابكم الخاص لمتابعة مساهمات السنديك عبر الإنترنت في أي وقت :
 
 👉 *رابط الدخول المباشر لحسابكم :*
-https://srbl.netlify.app/?client=${encodeURIComponent(lotCode.split(' ')[0] || 'lot')}
+https://srbl.netlify.app/?client=${encodeURIComponent((lotCode || '').split(' ')[0] || 'lot')}
 
 🔑 *رمز الدخول السري (Code PIN) :* \`${clientPin || '1234'}\`
 🏢 *رقم الشقة / المحل :* ${lotNumero}
 
+📄 *تحميل استدعاء الأداء الرسمي مباشرة (PDF) :*
+👉 ${finalPdfLink}
+
 عبر حسابكم يمكنكم :
 • معرفة الواجبات المؤداة والمتبقية مباشرة
-• تحميل استدعاءات الأداء (Appels de Fond) والوصولات (Reçus) بصيغة PDF
+• تحميل استدعاءات الأداء والوصولات بصيغة PDF
 • الحصول على الحساب البنكي (RIB) لإجراء التحويلات
 
 مع خالص التحيات والتقدير،

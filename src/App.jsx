@@ -39,6 +39,18 @@ function DashboardContent() {
 
   const [copiedRib, setCopiedRib] = React.useState(false);
 
+  // Redirection automatique si le lien de téléchargement PDF direct est ouvert (?pdf=M02)
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const pdfLot = params.get('pdf');
+      if (pdfLot) {
+        const cleanLot = pdfLot.trim().toUpperCase();
+        window.location.replace(`/pdf/appel-${cleanLot}.pdf`);
+      }
+    }
+  }, []);
+
   const handleCopyRib = () => {
     navigator.clipboard.writeText(residence.rib);
     setCopiedRib(true);

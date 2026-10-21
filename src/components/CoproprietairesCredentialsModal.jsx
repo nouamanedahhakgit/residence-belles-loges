@@ -409,17 +409,38 @@ export default function CoproprietairesCredentialsModal() {
                       )}
                     </td>
 
-                    {/* Lien Magique Direct */}
+                    {/* Lien Magique & PDF Direct */}
                     <td className="py-3 px-3">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleCopy(magicUrl, `url-${c.nom}`)}
-                          className="flex items-center space-x-1.5 px-2.5 py-1 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 rounded-lg text-xs font-semibold transition-colors"
-                          title="Copier le lien d'accès direct"
-                        >
-                          {copiedKey === `url-${c.nom}` ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                          <span className="font-mono text-[11px]">?client={primaryLotCode}</span>
-                        </button>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center space-x-1.5">
+                          <button
+                            onClick={() => handleCopy(magicUrl, `url-${c.nom}`)}
+                            className="flex items-center space-x-1 px-2 py-0.5 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 rounded-lg text-xs font-semibold transition-colors"
+                            title="Copier le lien d'accès direct au portail"
+                          >
+                            {copiedKey === `url-${c.nom}` ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                            <span className="font-mono text-[10px]">Portail (?client={primaryLotCode})</span>
+                          </button>
+                        </div>
+                        <div className="flex items-center space-x-1.5">
+                          <button
+                            onClick={() => handleCopy(`https://srbl.netlify.app/pdf/appel-${primaryLotCode}.pdf`, `pdf-${c.nom}`)}
+                            className="flex items-center space-x-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold transition-colors"
+                            title="Copier l'URL directe du fichier PDF statique"
+                          >
+                            {copiedKey === `pdf-${c.nom}` ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                            <span className="font-mono text-[10px]">PDF Statique (appel-{primaryLotCode}.pdf)</span>
+                          </button>
+                          <a
+                            href={`/pdf/appel-${primaryLotCode}.pdf`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1 text-slate-400 hover:text-blue-600"
+                            title="Ouvrir le PDF"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
                       </div>
                     </td>
 
